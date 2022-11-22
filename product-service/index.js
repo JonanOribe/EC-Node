@@ -11,7 +11,7 @@ const isAuthenticated = require("../isAuthenticated");
 
 app.use(express.json());
 
-let channel, connection;
+let channel, connection, order;
 
 mongoose.connect(
   "mongodb://localhost/product-service",
@@ -40,13 +40,29 @@ app.post("/product/create", isAuthenticated, async (req, res) => {
     description,
     price,
   });
+  newProduct.save()
   return res.json(newProduct);
 });
 
 app.post("/product/buy", isAuthenticated, async (req, res) => {
   const { ids } = req.body;
   const products = await Product.find({ _id: { $in: ids } });
+
+  channel.sendToQueue(
+    "ORDER",
+    Buffer.from(
+      JSON.stringify({
+        products,
+        userEmail: req.user.email,
+      })
+    )
+  );
+  channel.consume('PRODUCT',(data)=>{
+    console.log('Consuming product queue');
+    order = JSON.parse(data.content)
+    channel.ack(data)
+  })
+  return res.json(order)
 });
 
-app.get("/", (req, res) => res.send("Hello World!"));
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));

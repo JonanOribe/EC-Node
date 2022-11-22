@@ -31,22 +31,30 @@ async function connect() {
   await channel.assertQueue("ORDER");
 }
 
-connect();
+function createOrder(products, userEmail) {
+  let total = 0;
+  for (let t = 0; t < products.length; t++) {
+    total += products[t].price;
+  }
 
-app.post("/order/create", isAuthenticated, async (req, res) => {
-  const { name, description, price } = req.body;
   const newOrder = new Order({
-    name,
-    description,
-    price,
+    products,
+    user: userEmail,
+    total_price: total,
   });
-  return res.json(newOrder);
+  newOrder.save();
+  return newOrder
+}
+
+connect().then(() => {
+  channel.consume("ORDER", (data) => {
+    const { products, userEmail } = JSON.parse(data.content);
+    const newOrder = createOrder(products, userEmail);
+    console.log("Consuming ORDER queue");
+    console.log(products);
+    channel.ack(data)
+    channel.sendToQueue('PRODUCT',Buffer.from(JSON.stringify(newOrder)))
+  });
 });
 
-app.post("/order/buy", isAuthenticated, async (req, res) => {
-  const { ids } = req.body;
-  const orders = await Order.find({ _id: { $in: ids } });
-});
-
-app.get("/", (req, res) => res.send("Hello World!"));
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));
