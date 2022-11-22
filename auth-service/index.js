@@ -5,7 +5,7 @@ const port = process.env.PORT_ONE || 7070
 const mongoose = require('mongoose')
 const User = require('./models/User')
 const jwt = require('jsonwebtoken')
-
+app.use(express.json())
 mongoose.connect('mongodb://localhost/auth-service',{
     useNewUrlParser:true,
     useUnifiedTopology:true
@@ -38,7 +38,7 @@ app.post('/auth/register', async(req,res) =>{
     const {email, password, name} = req.body
     const userExist = await User.findOne({email})
     if(userExist){
-        return res.json({'User alredy exists'})
+        return res.json({message:'User alredy exists'})
     }else{
         const newUser = new User({
             name,email,password
@@ -48,6 +48,5 @@ app.post('/auth/register', async(req,res) =>{
     }
 })
 
-app.use(express.json())
 app.get('/', (req, res) => res.send('Hello World!'))
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
